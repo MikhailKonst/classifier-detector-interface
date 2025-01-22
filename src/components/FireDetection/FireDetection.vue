@@ -1,6 +1,7 @@
 <template>
 	<div class="middle-elements">
-		<FileUpload @filesSelected="updateImages" :status="props.status" :maxFiles="6" />
+		<FileUpload @filesSelected="updateImages" :status="props.status" :maxFiles="15" />
+
 		<FireDetectionBtn
 			v-if="currentImageSrc"
 			@sendRequest="sendRequest"
@@ -9,7 +10,6 @@
 			:fireRects="fireRects"
 		/>
 	</div>
-
 
 	<div v-if="currentImageSrc" class="preview">
 		<img ref="imageElement" class="preview__img" :src="currentImageSrc" alt="Изображение" />
@@ -36,15 +36,15 @@
 	</div>
 
 	<div v-if="images.length > 0" class="thumbnails">
-		<div class="thumbnails__slider">
+		<div ref="thumbnailsContainer" class="thumbnails__container">
 			<div
 				v-for="(image, index) in images"
 				:key="index"
-				class="thumbnail"
+				class="thumbnails__item"
 				@click="setPreviewImage(index)"
-				:class="{ 'thumbnail--active': index === currentIndex }"
+				:class="{ 'thumbnails__item--active': index === currentIndex }"
 			>
-				<img :src="image.url" alt="Миниатюра" />
+				<img class="thumbnails__image" :src="image.url" alt="Миниатюра" />
 			</div>
 		</div>
 	</div>
@@ -62,11 +62,9 @@ const props = defineProps<{
 	status: string;
 }>();
 
-
 const images = ref<{ url: string; base64: string }[]>([]);
 const currentIndex = ref(0);
-
-
+const thumbnailsContainer = ref<HTMLElement | null>(null);
 const result = ref<{ type: string } | null>(null);
 
 const fireRects = ref<
@@ -75,7 +73,6 @@ const fireRects = ref<
 const imageElement = ref<HTMLImageElement | null>(null);
 
 const currentImageSrc = computed(() => images.value[currentIndex.value]?.url || null);
-
 
 const updateImages = (files: { base64: string; url: string }[]) => {
 	images.value = files;
@@ -86,13 +83,28 @@ const updateImages = (files: { base64: string; url: string }[]) => {
 const setPreviewImage = (index: number) => {
 	currentIndex.value = index;
 	clearPreview();
-
+	centerThumbnail(index);
 };
 
 const clearPreview = () => {
 	fireRects.value = [];
 };
 
+const centerThumbnail = (index: number) => {
+	const container = thumbnailsContainer.value;
+	if (container) {
+		const thumbnailWidth = 120;
+		const gap = 8;
+		const visibleWidth = container.offsetWidth;
+
+		const scrollTo = index * (thumbnailWidth + gap) - (visibleWidth - thumbnailWidth) / 2;
+
+		container.scrollTo({
+			left: Math.max(0, Math.min(scrollTo, container.scrollWidth - visibleWidth)),
+			behavior: 'smooth',
+		});
+	}
+};
 const sendRequest = async () => {
 	const currentImage = images.value[currentIndex.value]?.base64;
 	if (!currentImage) {
@@ -264,30 +276,41 @@ watch(currentImageSrc, () => {
 		color: $color-primary;
 	}
 }
+
 .thumbnails {
 	display: flex;
-	overflow-x: auto;
-}
+	justify-content: center;
+	margin-top: 20px;
 
-.thumbnails__slider {
-	display: flex;
-	gap: 8px;
-}
+	&__container {
+		display: flex;
+		gap: 8px;
+		overflow-x: auto;
+		scroll-behavior: smooth;
+		padding: 10px;
+		width: 100%;
+		max-width: 740px;
+	}
 
-.thumbnail {
-	cursor: pointer;
-	border: 2px solid transparent;
-	width: 80px;
-	height: 80px;
-}
+	&__item {
+		flex-shrink: 0;
+		width: 120px;
+		height: 120px;
+		cursor: pointer;
+		border: 1.5px solid transparent;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
 
-.thumbnail img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-}
+	&__item--active {
+		border-color: $border-color;
+	}
 
-.thumbnail--active {
-	border-color: #007bff;
+	&__image {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
 }
 </style>
